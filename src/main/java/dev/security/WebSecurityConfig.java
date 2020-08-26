@@ -17,7 +17,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.sql.DataSource;
 
 /**
- * Configuration Spring Security. Test here
+ * Configuration Spring Security.
  */
 @Configuration
 @EnableWebSecurity
