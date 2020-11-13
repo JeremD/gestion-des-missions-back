@@ -178,41 +178,41 @@ public class MissionController {
 		return missionFutur;
 	}
 
-	@GetMapping("traitement")
+	@PostMapping("traitement")
 	@Scheduled(cron = "0 4 * * * *")
 	public void updateValidation() {
 
 		List<Mission> missions = service.lister();
 
-		for (Mission miss : missions) {
+		for (Mission mission : missions) {
 
-			if (miss.getStatut().equals(Statut.INITIALE)) {
-				miss.setStatut(Statut.EN_ATTENTE_VALIDATION);
-				service.updateMission(miss);
-				logger.info("Mission validée ==> " + miss.toString());
+			if (mission.getStatut().equals(Statut.INITIALE)) {
+				mission.setStatut(Statut.EN_ATTENTE_VALIDATION);
+				service.updateMission(mission);
+				logger.info("Mission validée ==> " + mission.toString());
 				serviceMail.sendEmail();
 			}
 
-			if (miss.getDateFin().isBefore(LocalDate.now()) && !miss.getTraite()) {
-				Period joursTravailles = Period.between(miss.getDateDebut(), miss.getDateFin());
+			if (mission.getDateFin().isBefore(LocalDate.now()) && !mission.getTraite()) {
+				Period joursTravailles = Period.between(mission.getDateDebut(), mission.getDateFin());
 
-				if (miss.getNature().getTjm() == null || miss.getNature().getPourcentagePrime() == null) {
+				if (mission.getNature().getTjm() == null || mission.getNature().getPourcentagePrime() == null) {
 					throw new PrimeException(new MessageErreurDto(CodeErreur.METIER,
 							"Le TJM ou le pourcentage de la prime est incorrect"));
 				}
 
 				BigDecimal calculPrime = BigDecimal.valueOf(joursTravailles.getDays())
-						.multiply(miss.getNature().getTjm()).multiply(miss.getNature().getPourcentagePrime()
+						.multiply(mission.getNature().getTjm()).multiply(mission.getNature().getPourcentagePrime()
 								.divide(BigDecimal.valueOf(100), 2, RoundingMode.CEILING));
 
-				if (miss.getNature().getDepassementFrais()) {
-					calculPrime.subtract(miss.getNature().getPlafondFrais());
+				if (mission.getNature().getDepassementFrais()) {
+					calculPrime.subtract(mission.getNature().getPlafondFrais());
 				}
 
-				miss.setPrime(calculPrime);
-				miss.setTraite(true);
-				service.updateMission(miss);
-				logger.info("Prime de la mission terminée : " + miss.getPrime().toString() + " ==> " + miss.toString());
+				mission.setPrime(calculPrime);
+				mission.setTraite(true);
+				service.updateMission(mission);
+				logger.info("Prime de la mission terminée : " + mission.getPrime().toString() + " ==> " + mission.toString());
 			}
 		}
 	}
