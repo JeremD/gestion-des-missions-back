@@ -30,90 +30,88 @@ import dev.service.NatureService;
 @RequestMapping("natures")
 @CrossOrigin(origins = "*")
 public class NatureController {
-	
+
 	private NatureService service;
 	private MissionService missService;
-	
+
 	public NatureController(NatureService service, MissionService missService) {
 		this.service = service;
 		this.missService = missService;
 	}
-	
+
 	@GetMapping
-	@Secured(value="ROLE_UTILISATEUR, ROLE_ADMINISTRATEUR, ROLE_MANAGER")
-	public List<Nature> getNature(){
+	@Secured(value = "ROLE_UTILISATEUR, ROLE_ADMINISTRATEUR, ROLE_MANAGER")
+	public List<Nature> getNature() {
 		return service.lister();
 	}
-	
+
 	@GetMapping("valides")
-	@Secured(value="ROLE_UTILISATEUR, ROLE_ADMINISTRATEUR, ROLE_MANAGER")
-	public List<Nature> getNatureValides(){
+	@Secured(value = "ROLE_UTILISATEUR, ROLE_ADMINISTRATEUR, ROLE_MANAGER")
+	public List<Nature> getNatureValides() {
 		List<Nature> liste = service.lister();
 		List<Nature> valides = new ArrayList<>();
-		for(Nature nat : liste) {
-			if(nat.getFinValidite()==null) {
+		for (Nature nat : liste) {
+			if (nat.getFinValidite() == null) {
 				valides.add(nat);
 			}
 		}
 		return valides;
 	}
-	
+
 	@GetMapping("{uuid}")
-	@Secured(value="ROLE_UTILISATEUR, ROLE_ADMINISTRATEUR, ROLE_MANAGER")
+	@Secured(value = "ROLE_UTILISATEUR, ROLE_ADMINISTRATEUR, ROLE_MANAGER")
 	public Nature getNatureUuid(@PathVariable UUID uuid) {
 		return service.getNature(uuid).get();
 	}
-	
+
 	@PostMapping
-	@Secured(value="ROLE_ADMINISTRATEUR")
+	@Secured(value = "ROLE_ADMINISTRATEUR")
 	public ResponseEntity<?> creerNature(@RequestBody @Valid CreerNatureDto natureDto) {
 		try {
 			List<Nature> natures = getNatureValides();
-			for(Nature nat : natures) {
-				if(nat.getLibelle().toUpperCase().equals(natureDto.getLibelle().toUpperCase())) {
+			for (Nature nat : natures) {
+				if (nat.getLibelle().toUpperCase().equals(natureDto.getLibelle().toUpperCase())) {
 					return ResponseEntity.status(HttpStatus.CONFLICT).body("Nature existante");
 				}
 			}
-			
-			Nature natureCree = service.creer(natureDto.getLibelle(), natureDto.getPayee(), natureDto.getTjm(), 
-				natureDto.getVersementPrime(), natureDto.getPourcentagePrime(), 
-				natureDto.getPlafondFrais(), natureDto.getDepassementFrais());
-			
-			return ResponseEntity.status(HttpStatus.OK).body(natureDto);
-		}catch (Exception e) {
+
+			Nature natureCree = service.creer(natureDto.getLibelle(), natureDto.getPayee(), natureDto.getTjm(),
+					natureDto.getVersementPrime(), natureDto.getPourcentagePrime(), natureDto.getPlafondFrais(),
+					natureDto.getDepassementFrais());
+
+			return ResponseEntity.status(HttpStatus.OK).body(natureCree);
+		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e);
 		}
 	}
-	
+
 	@PostMapping("post")
-	@Secured(value="ROLE_ADMINISTRATEUR")
+	@Secured(value = "ROLE_ADMINISTRATEUR")
 	public ResponseEntity<?> creerNatureLibelleExistant(@RequestBody @Valid CreerNatureDto natureDto) {
 		try {
-			List<Nature> natures = service.lister();
-			
-			Nature natureCree = service.creer(natureDto.getLibelle(), natureDto.getPayee(), natureDto.getTjm(), 
-				natureDto.getVersementPrime(), natureDto.getPourcentagePrime(), 
-				natureDto.getPlafondFrais(), natureDto.getDepassementFrais());
-			
-			return ResponseEntity.status(HttpStatus.OK).body(natureDto);
-		}catch (Exception e) {
+			Nature natureCree = service.creer(natureDto.getLibelle(), natureDto.getPayee(), natureDto.getTjm(),
+					natureDto.getVersementPrime(), natureDto.getPourcentagePrime(), natureDto.getPlafondFrais(),
+					natureDto.getDepassementFrais());
+
+			return ResponseEntity.status(HttpStatus.OK).body(natureCree);
+		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e);
 		}
 	}
-	
+
 	@PatchMapping("updateDateFin/{uuid}")
-	@Secured(value="ROLE_ADMINISTRATEUR")
+	@Secured(value = "ROLE_ADMINISTRATEUR")
 	public void updateDateFin(@PathVariable UUID uuid) {
-		//mettre la date de fin à aujourd'hui
+		// mettre la date de fin à aujourd'hui
 		Nature nature = service.getNature(uuid).get();
 		nature.setFinValidite(LocalDate.now());
 		service.update(nature);
 	}
-	
+
 	@PatchMapping("modifier/{uuid}")
-	@Secured(value="ROLE_ADMINISTRATEUR")
+	@Secured(value = "ROLE_ADMINISTRATEUR")
 	public void updateNature(@PathVariable UUID uuid, @RequestBody @Valid CreerNatureDto natureDto) {
-		//changer la nature sans changer la date de début
+		// changer la nature sans changer la date de début
 		Nature nature = service.getNature(uuid).get();
 		nature.setLibelle(natureDto.getLibelle());
 		nature.setPayee(natureDto.getPayee());
@@ -122,42 +120,36 @@ public class NatureController {
 		nature.setPourcentagePrime(natureDto.getPourcentagePrime());
 		nature.setDepassementFrais(natureDto.getDepassementFrais());
 		nature.setPlafondFrais(natureDto.getPlafondFrais());
-		
+
 		service.update(nature);
 	}
-	
+
 	@DeleteMapping("{uuid}")
-	@Secured(value="ROLE_ADMINISTRATEUR")
+	@Secured(value = "ROLE_ADMINISTRATEUR")
 	public ResponseEntity<?> deleteNature(@PathVariable UUID uuid) {
-		
+
 		try {
 			List<Mission> missions = missService.lister();
 			Boolean utilise = false;
-			Boolean supprimable = false;
-			for(Mission mission : missions) {
-				if(mission.getNature().getUuid().equals(uuid) && mission.getDateFin().isAfter(LocalDate.now())) {
+			for (Mission mission : missions) {
+				if (mission.getNature().getUuid().equals(uuid) && mission.getDateFin().isAfter(LocalDate.now())) {
 					utilise = true;
 				}
 			}
-			
-			if (utilise ==true) {
+
+			if (utilise == true) {
 				updateDateFin(uuid);
 				return ResponseEntity.status(HttpStatus.OK).body("update fin de validité");
-			}
-			else {
+			} else {
 				Nature nature = service.getNature(uuid).get();
 				service.delete(nature);
 				return ResponseEntity.status(HttpStatus.OK).body("Nature supprimé");
 			}
-			
-			
-	
-		}catch (Exception e) {
+
+		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e);
 		}
-		
-		
-		
+
 	}
 
 }
